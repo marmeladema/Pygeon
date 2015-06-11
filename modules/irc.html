@@ -1,0 +1,83 @@
+<form class="form-inline">
+  <div class="form-group">
+    <label class="sr-only" for="inputChannel">Channel</label>
+    <div class="input-group">
+      <div class="input-group-addon"><b>#</b></div>
+      <input type="text" class="form-control" id="inputChannel" placeholder="Channel">
+      <span class="input-group-btn">
+        <button type="submit" class="btn btn-primary">
+          <span class="glyphicon glyphicon-plus" aria-hidden="true"></span>
+        </button>
+      </span>
+    </div>
+  </div>
+</form>
+
+{% for network in irc.networks %}
+<div class="panel panel-default">
+  <!-- Default panel contents -->
+  <div class="panel-heading"><h4>{{network}}</h4></div>
+  <div class="panel-body">
+    <p>...</p>
+    <!--<form class="form-inline">-->
+    <!-- Table -->
+    <!--<div class="container-fluid">-->
+      <caption>Channels</caption>
+      <div class="row">
+        <div class="col-xs-3 col-sm-1"></div>
+        <div class="col-xs-3 col-sm-3">Channel</div>
+        <div class="col-xs-3 col-sm-3">Key</div>
+        <div class="col-xs-3 col-sm-3"></div>
+      </div>
+
+      {% for channel in irc.networks[network].channels %}
+      <div class="panel panel-default">
+        <!-- Default panel contents -->
+        <div class="panel-heading btn-group" role="group">
+          <button type="button" class="btn btn-default"><b>#</b></button>
+        </div>
+        <div class="panel-body">
+        </div>
+      </div>
+      <div class="row">
+          <div class="col-xs-6 col-sm-1">{{ irc.networks[network].channels.index(channel) + 1 }}</div>
+          <div class="ccol-xs-6 col-sm-3">
+            <div class="input-group">
+              <div class="input-group-addon"><b>#</b></div>
+              <input type="text" class="form-control" id="inputChannel" placeholder="Channel" value="{{channel}}" readonly>
+            </div>
+          </div>
+          <div class="col-xs-6 col-sm-3">
+            <input type="text"class="form-control" id="inputKey" placeholder="Key" readonly>
+          </div>
+          <div class="col-xs-6 col-sm-3 btn-group" role="group">
+              <button type="submit" class="btn btn-default">
+                <span class="glyphicon glyphicon-ok" aria-hidden="true"></span>
+              </button>
+              <button type="submit" class="btn btn-default">
+                <span class="glyphicon glyphicon-minus" aria-hidden="true"></span>
+              </button>
+          </div>
+      </div>
+      {% endfor %}
+
+      <div class="row">
+        <div class="col-xs-6 col-sm-1"></div>
+        <div class="col-xs-6 col-sm-3">
+          <div class="input-group">
+            <div class="input-group-addon"><b>#</b></div>
+            <input type="text" class="form-control" id="inputChannel" placeholder="Channel">
+          </div>
+        </div>
+        <div class="col-xs-6 col-sm-3"><input type="text"class="form-control" id="inputKey" placeholder="Key"></div>
+        <div class="col-xs-6 col-sm-3 input-group-btn">
+          <button type="submit" class="btn btn-primary">
+            <span class="glyphicon glyphicon-plus" aria-hidden="true"></span>
+          </button>
+        </div>
+      </div>
+    <!--</div>-->
+    <!--</form>-->
+  </div>
+</div>
+{% endfor %}

@@ -1,0 +1,13 @@
+<form class="form-inline">
+	<select name="module" class="selectpicker" dir="rtl">
+		{% for module in app.enabled %}
+		<optgroup label="{{module}}">
+			{% for scheme in app.enabled[module].schemes() %}
+			<option value="{{module}}:{{scheme}}" style="text-align: right;" dir="rtl">{{module}} - {{scheme}}://</option>
+			{% endfor %}
+		</optgroup>
+		{% endfor %}
+	</select>
+	<input type="text" class="form-control">
+	<button type="submit" class="btn btn-primary">Download</button>
+</form>

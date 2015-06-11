@@ -1,0 +1,38 @@
+<table class="table">
+	<thead>
+		<tr>
+			<th style="width:5%">#</th>
+			<th style="width:20%">Info</th>
+			<th style="width:5%">Size</th>
+			<th>Status</th>
+			<th>Progress</th>
+			<th class="text-right" style="width:10%;">Action</th>
+		</tr>
+	</thead>
+		<tbody>
+		{% for i in range(0, source.files|count) %}
+			<tr>
+				<td>#{{i+1}}</td>
+				<td>
+					<span title="{{source.files[i]._url}}">{{source.files[i]._name}}</span>
+				</td>
+				<td>{{source.files[i]._size}}</td>
+				<td>{{source.files[i].state()|string}}</td>
+				<td>
+					<div class="progress">
+					<div class="progress-bar" role="progressbar" aria-valuenow="{{source.files[i].progress()|string}}" aria-valuemin="0" aria-valuemax="100" style="width: {{source.files[i].progress()|string}}%;">
+				    	{{source.files[i].progress()|string}}%
+					</div>
+				</div>
+			</td>
+				<td class="text-right" style="vertical-align: middle;">
+					<form action="/source/{{ source.name()|urlencode }}/download/{{i}}">
+						<button type="submit" class="btn btn-primary btn-sm" aria-label="Download">
+						<span class="glyphicon glyphicon-download" aria-hidden="true"></span>
+					</button>
+					</form>
+				</td>
+			</tr>
+		{% endfor %}
+		</tbody>
+</table>

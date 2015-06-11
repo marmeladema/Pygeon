@@ -1,0 +1,25 @@
+<div class="panel panel-default">
+	<div class="panel-heading">
+		<h2 class="panel-title">
+			<div class="row">
+				<div class="col-md-6 text-left"><strong>{{source.name()}}</strong></div>
+				<div class="col-md-6 text-right">
+					Last updated on {{source.last_update().strftime('%Y-%m-%d %H:%M:%S')}}
+					<button type="button" class="btn btn-default btn-xs" aria-label="Refresh">
+						<span class="glyphicon glyphicon-refresh" aria-hidden="true"></span>
+					</button>
+				</div>
+			</div>
+		</h2>
+	</div>
+	<div class="panel-body" id="active-list">
+		{% include 'file_list.html' %}
+	</div>
+	<script language="javascript" type="text/javascript">
+function loadlist(){
+    $('#active-list').load('/active');
+}
+
+setInterval(function(){ loadlist() }, 2000);
+	</script>
+</div>
