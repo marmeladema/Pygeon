@@ -23,15 +23,38 @@
     <![endif]-->
     <link rel="stylesheet" type="text/css" href="/static/bootstrap-3.3.4-dist/css/bootstrap-select.min.css">
     <style>
-.display-table{
-    display: table;
-    table-layout: fixed;
+.fa-spin-custom, .glyphicon-spin {
+    -webkit-animation: spin 1000ms infinite linear;
+    animation: spin 1000ms infinite linear;
+}
+@-webkit-keyframes spin {
+    0% {
+        -webkit-transform: rotate(0deg);
+        transform: rotate(0deg);
+    }
+    100% {
+        -webkit-transform: rotate(359deg);
+        transform: rotate(359deg);
+    }
+}
+@keyframes spin {
+    0% {
+        -webkit-transform: rotate(0deg);
+        transform: rotate(0deg);
+    }
+    100% {
+        -webkit-transform: rotate(359deg);
+        transform: rotate(359deg);
+    }
 }
 
-.display-cell{
-    display: table-cell;
-    vertical-align: middle;
-    float: none;
+.nopadding {
+   padding: 0 !important;
+   margin: 0 !important;
+}
+
+#file_list > #file_list_item:hover {
+  background-color: #F0F8FF;
 }
     </style>
   </head>
@@ -81,8 +104,6 @@
     <!-- Placed at the end of the document so the pages load faster -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
     <script src="/static/bootstrap-3.3.4-dist/js/bootstrap.min.js"></script>
-    <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
-    <script src="../../assets/js/ie10-viewport-bug-workaround.js"></script>
     <script src="/static/bootstrap-3.3.4-dist/js/bootstrap-select.min.js"></script>
   </body>
 </html>

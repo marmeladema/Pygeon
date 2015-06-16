@@ -2,12 +2,20 @@
 	<div class="panel-heading">
 		<h2 class="panel-title">
 			<div class="row">
-				<div class="col-md-6 text-left"><strong>{{source.name()}}</strong></div>
+				<div class="col-md-6 text-left">
+					<a href="/source/{{ source.name()|urlencode }}">
+						<strong>{{source.name()}}</strong>
+					</a>
+				</div>
 				<div class="col-md-6 text-right">
 					Last updated on {{source.last_update().strftime('%Y-%m-%d %H:%M:%S')}}
-					<button type="button" class="btn btn-default btn-xs" aria-label="Refresh">
-						<span class="glyphicon glyphicon-refresh" aria-hidden="true"></span>
-					</button>
+					<a type="button" class="btn btn-default btn-xs" aria-label="Refresh" href="/source/{{ source.name()|urlencode }}/refresh">
+						{% if source.state().active() %}
+						<span class="glyphicon glyphicon-refresh glyphicon-spin" aria-hidden="true" title="Refresh: {{ source.state()|string }}"></span>
+						{% else %}
+						<span class="glyphicon glyphicon-refresh" aria-hidden="true" title="Refresh: {{ source.state()|string }}"></span>
+						{% endif %}
+					</a>
 				</div>
 			</div>
 		</h2>

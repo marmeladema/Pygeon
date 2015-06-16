@@ -1,6 +1,7 @@
 # twisted imports
 from twisted.web.server import Site
 from twisted.web.resource import Resource, NoResource, getChildForRequest
+from twisted.web.util import redirectTo
 from twisted.internet import reactor, task, defer
 from twisted.python import log
 from twisted.web.static import File
@@ -14,9 +15,14 @@ import tempfile
 import os
 import re
 import datetime
+import urllib
+import string
 
 # template imports
 import jinja2
+
+class RequestRedirection(Exception):
+    pass
 
 class FileState:
     states = ["WAITING", "REQUESTED", "DOWNLOADING", "FINISHED", "ERROR"]
@@ -33,17 +39,26 @@ class FileState:
     def set(self, status):
     	self._status = self.states.index(status)
 
+    def equal(self, state):
+    	return self._status == self.states.index(state)
+
+    def active(self):
+    	return self.equal('REQUESTED') or self.equal('DOWNLOADING')
+
 	def __repr__(self):
 		return ("<%s at %x: %s>" % (self.__class__, id(self), self.status()))
 
 class DownloaderFile:
-	def __init__(self, manager, url, name = '', filename = '', size = 0, temp = False):
+	def __init__(self, manager, url, name = '', filename = '', size = None, temp = False):
 		self._manager = manager
 		self._name = name
 		self._filename = filename
 		self._module, self._url = url.encode('ascii').split(':', 1)
 		self._received = 0
-		self._size = int(size)
+		if size:
+			self._size = self.parse_size(size)
+		else:
+			self._size = None
 		self._temp = temp
 		self._download_time = None
 		self._success = None
@@ -119,6 +134,39 @@ class DownloaderFile:
 			return 0
 		return int(100.0 * self._received / self._size)
 
+	def size_fmt(self, suffix='B'):
+		num = self._size
+		for unit in ['','Ki','Mi','Gi','Ti','Pi','Ei','Zi']:
+			if abs(num) < 1024.0:
+				return "%3.1f%s%s" % (num, unit, suffix)
+			num /= 1024.0
+		return "%.1f%s%s" % (num, 'Yi', suffix)
+
+	def parse_size(self, str):
+		int_part = ''
+		while str and str[0] in string.digits:
+			int_part += str[0]
+			str = str[1:]
+		if str and str[0] == '.':
+			int_part += str[0]
+			str = str[1:]
+			while str and str[0] in string.digits:
+				int_part += str[0]
+				str = str[1:]
+		print(int_part)
+		size = float(int_part)
+		unite = {
+			'kio' : 2**10, 'mio' : 2**20, 'gio' : 2**30, 'tio' : 2**40, 'pio' : 2**50, 'eio' : 2**60, 'zio' : 2**70,
+			'ko' : 10**3, 'mo' : 10**6, 'go' : 10**9, 'to' : 10**12, 'po' : 10**15, 'eo' : 10**18, 'zo' : 10**21,
+		}
+		if str:
+			print(str)
+			if str.lower() in unite:
+				size *= unite[str.lower()]
+			else:
+				size *= unite[str.lower()+'o']
+		return int(size)
+
 class DownloaderSource:
 	files = []
 
@@ -133,6 +181,12 @@ class DownloaderSource:
 		self._filename = config.get('filename', '')
 		self._filesize = config.get('filesize', '')
 		self._task = None
+		self.refresh_loop()
+
+	def refresh_loop(self):
+		if self._task:
+			self._task.stop()
+			self._task = None
 		if self._refresh > 0.0:
 			self._task = task.LoopingCall(self.refresh)
 			self._task.start(int(self._refresh*60), now = True)
@@ -178,13 +232,22 @@ class DownloaderSource:
 		return self._name
 
 	def render(self, path):
+		print(path)
 		if len(path) > 0:
 			if path[0] == 'download':
 				try:
 					self.files[int(path[1])].download()
 				except ValueError,IndexError:
 					pass
+			elif path == ['refresh']:
+				print('Refreshing:',self.state().status())
+				if not self.state().active():
+					self.refresh_loop()
+				raise RequestRedirection('/source/' + urllib.quote(self.name()) + '/')
 		return self._manager.jinja.get_template('source.html').render(app=self._manager, source=self)
+
+	def state(self):
+		return self._file.state()
 
 class ActiveSource(DownloaderSource):
 	def __init__(self):
@@ -241,25 +304,29 @@ class Downloader(Resource):
 	def render(self, request):
 		#request.setHeader("Content-Type", "text/plain; charset=utf-8")
 		content = ''
-		if len(request.prepath) >= 2 and request.prepath[0] == 'module' and request.prepath[1] in self.enabled:
-			module = request.prepath[1]
-			path = request.prepath[2:]
+		try:
+			if len(request.prepath) >= 2 and request.prepath[0] == 'module' and request.prepath[1] in self.enabled:
+				module = request.prepath[1]
+				path = request.prepath[2:]
 
-			if path == ['schemes']:
-				return json.dumps(self.enabled[module].schemes())
+				if path == ['schemes']:
+					return json.dumps(self.enabled[module].schemes())
+				else:
+					content = self.enabled[module].render(path) + '\n'
+			elif len(request.prepath) >= 2 and request.prepath[0] == 'source' and request.prepath[1] in self.sources:
+				content = self.sources[request.prepath[1]].render(request.prepath[2:])
+			elif request.prepath == ['download']:
+				content = self.jinja.get_template('download.html').render(app=self)
+			elif request.prepath[0:1] == ['sources']:
+				for source in self.sources:
+					content += self.jinja.get_template('source.html').render(app=self, source=self.sources[source])
+			elif request.prepath == ['active']:
+				return self.jinja.get_template('file_list.html').render(app=self, source=self.active).encode('utf-8')
 			else:
-				content = self.enabled[module].render(path) + '\n'
-		elif len(request.prepath) >= 2 and request.prepath[0] == 'source' and request.prepath[1] in self.sources:
-			content = self.sources[request.prepath[1]].render(request.prepath[2:])
-		elif request.prepath == ['download']:
-			content = self.jinja.get_template('download.html').render(app=self)
-		elif request.prepath[0:1] == ['sources']:
-			for source in self.sources:
-				content += self.jinja.get_template('source.html').render(app=self, source=self.sources[source])
-		elif request.prepath == ['active']:
-			return self.jinja.get_template('file_list.html').render(app=self, source=self.active).encode('utf-8')
-		else:
-			content = self.jinja.get_template('active.html').render(app=self, source=self.active)
+				content = self.jinja.get_template('active.html').render(app=self, source=self.active)
+		except RequestRedirection as e:
+			url = e.args[0]
+			return redirectTo(url.encode('ascii'), request)
 		#child = self.getChildForLeafRequest(request)
 		#print(repr(child))
 		#return html+child.render(request)
@@ -281,13 +348,10 @@ if __name__ == '__main__':
 	log.startLogging(sys.stdout)
 	
 	# create factory protocol and application
-	#irc_factory = IrcBotFactory(sys.argv[1], sys.argv[2:])
 	config = json.load(open('config.json'))
-	print(config)
 	web_factory = Site(Downloader(config))
 
-	reactor.listenTCP(8080, web_factory)
-	#reactor.connectTCP("irc.freenode.net", 6667, irc_factory)
+	reactor.listenTCP(config["web"]["port"], web_factory)
 
 	# run bot
 	reactor.run()

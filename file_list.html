@@ -1,68 +1,32 @@
-<div class="row">
-	<div class="col-md-1"><strong>#</strong></div>
-	<div class="col-md-6"><strong>Info</strong></div>
-	<div class="col-md-1"><strong>Size</strong></div>
-	<div class="col-md-1"><strong>Status</strong></div>
-	<div class="col-md-2"><strong>Progress</strong></div>
-	<div class="col-md-1"><strong>Action</strong></div>
-</div>
-{% for i in range(0, source.files|count) %}
-<div class="row display-table" style="border-top: 1px solid #ccc;">
-	<div class="col-md-1 display-cell" style="vertical-align:middle">#{{i+1}}</div>
-	<div class="col-md-6 display-cell" style="vertical-align:middle"><span title="{{source.files[i]._url}}">{{source.files[i]._name}}</span></div>
-	<div class="col-md-1 display-cell">{{source.files[i]._size}}</div>
-	<div class="col-md-1 display-cell">{{source.files[i].state()|string}}</div>
-	<div class="col-md-2 display-cell progress">
-			<div class="progress-bar" role="progressbar" aria-valuenow="{{source.files[i].progress()|string}}" aria-valuemin="0" aria-valuemax="100" style="width: {{source.files[i].progress()|string}}%;">
-		    {{source.files[i].progress()|string}}%
-			</div>
+<div id="file_list">
+	<div id="file_list_header" class="row">
+		<div class="col-md-1 col-xs-1"><strong>#</strong></div>
+		<div class="col-md-5 col-xs-10"><strong>Info</strong></div>
+		<div class="col-md-1 col-xs-3"><strong>Size</strong></div>
+		<div class="col-md-1 col-xs-3"><strong>Status</strong></div>
+		<div class="col-md-3 col-xs-4"><strong>Progress</strong></div>
+		<div class="col-md-1 col-xs-1"><strong>Action</strong></div>
 	</div>
-	<div class="col-md-1 display-cell">
-		<form action="/source/{{ source.name()|urlencode }}/download/{{i}}">
-			<button type="submit" class="btn btn-primary btn-sm" aria-label="Download">
-				<span class="glyphicon glyphicon-download" aria-hidden="true"></span>
-			</button>
-		</form>
-	</div>
-</div>
-{% endfor %}
-<!--
-<table class="table">
-	<thead>
-		<tr>
-			<th style="width:5%">#</th>
-			<th style="width:20%">Info</th>
-			<th style="width:5%">Size</th>
-			<th>Status</th>
-			<th>Progress</th>
-			<th class="text-right" style="width:10%;">Action</th>
-		</tr>
-	</thead>
-		<tbody>
-		{% for i in range(0, source.files|count) %}
-			<tr>
-				<td>#{{i+1}}</td>
-				<td>
-					<span title="{{source.files[i]._url}}">{{source.files[i]._name}}</span>
-				</td>
-				<td>{{source.files[i]._size}}</td>
-				<td>{{source.files[i].state()|string}}</td>
-				<td>
-					<div class="progress">
-					<div class="progress-bar" role="progressbar" aria-valuenow="{{source.files[i].progress()|string}}" aria-valuemin="0" aria-valuemax="100" style="width: {{source.files[i].progress()|string}}%;">
-				    	{{source.files[i].progress()|string}}%
-					</div>
+	{% for i in range(0, source.files|count) %}
+	<div id="file_list_item" class="row" style="height:100%;border-top: 1px solid #ccc;vertical-align:middle">
+		<div class="col-md-1 col-xs-1">#{{i+1}}</div>
+		<div class="col-md-5 col-xs-10" style="white-space:normal;overflow-wrap:break-word;">
+			<span title="{{source.files[i]._url}}">{{source.files[i]._name}}</span>
+		</div>
+		<div class="col-md-1 col-xs-3">{{source.files[i].size_fmt()}}</div>
+		<div class="col-md-1 col-xs-3">{{source.files[i].state()|string}}</div>
+		<div class="col-md-3 col-xs-4">
+			<div class="progress nopadding">
+				<div class="progress-bar" role="progressbar" aria-valuenow="{{source.files[i].progress()|string}}" aria-valuemin="0" aria-valuemax="100" style="width: {{source.files[i].progress()|string}}%;">
+			    {{source.files[i].progress()|string}}%
 				</div>
-			</td>
-				<td class="text-right" style="vertical-align: middle;">
-					<form action="/source/{{ source.name()|urlencode }}/download/{{i}}">
-						<button type="submit" class="btn btn-primary btn-sm" aria-label="Download">
-						<span class="glyphicon glyphicon-download" aria-hidden="true"></span>
-					</button>
-					</form>
-				</td>
-			</tr>
-		{% endfor %}
-		</tbody>
-</table>
--->
+			</div>
+		</div>
+		<div class="col-md-1 col-xs-1">
+			<a type="button" class="btn btn-default btn-xs" aria-label="Download" href="/source/{{ source.name()|urlencode }}/download/{{i}}">
+				<span class="glyphicon glyphicon-download" aria-hidden="true"></span>
+			</a>
+		</div>
+	</div>
+	{% endfor %}
+</div>
