@@ -17,6 +17,8 @@ import re
 import datetime
 import urllib
 import string
+import shutil
+import importlib
 
 # template imports
 import jinja2
@@ -27,7 +29,8 @@ class RequestRedirection(Exception):
 class FileState:
     states = ["WAITING", "REQUESTED", "DOWNLOADING", "FINISHED", "ERROR"]
 
-    def __init__(self):
+    def __init__(self, file):
+    	self._file = file
     	self._status = 0
 
     def status(self):
@@ -38,6 +41,11 @@ class FileState:
 
     def set(self, status):
     	self._status = self.states.index(status)
+    	event = 'on_'+self.states[self._status].lower()
+    	if event in self._file._triggers:
+    		for name in self._file._triggers[event]:
+    			trigger = self._file._manager.triggers['enabled'][name]
+    			getattr(trigger, event)(self._file)
 
     def equal(self, state):
     	return self._status == self.states.index(state)
@@ -49,11 +57,12 @@ class FileState:
 		return ("<%s at %x: %s>" % (self.__class__, id(self), self.status()))
 
 class DownloaderFile:
-	def __init__(self, manager, url, name = '', filename = '', size = None, temp = False):
+	def __init__(self, manager, url, target, name = '', filename = '', size = None, temp = False, triggers = {}):
 		self._manager = manager
+		self._module, self._url = url.encode('ascii').split(':', 1)
+		self._target = target
 		self._name = name
 		self._filename = filename
-		self._module, self._url = url.encode('ascii').split(':', 1)
 		self._received = 0
 		if size:
 			self._size = self.parse_size(size)
@@ -67,7 +76,9 @@ class DownloaderFile:
 		self._end_time = 0.0
 		self._good = False
 		self._active = False
-		self._state = FileState()
+		self._state = FileState(self)
+		self._fd = None
+		self._triggers = triggers
 
 	def open(self, filename  = ''):
 		if filename:
@@ -78,7 +89,7 @@ class DownloaderFile:
 			self._fd = tempfile.NamedTemporaryFile(delete = False)
 		else:
 			self._manager.active.files.append(self)
-			self._fd = open(self._filename, 'wb')
+			self._fd = open(os.path.join(self._target, self._filename), 'wb')
 		self.state().set("DOWNLOADING")
 		return self
 
@@ -88,6 +99,10 @@ class DownloaderFile:
 
 	def close(self):
 		self._fd.close()
+
+	def move(self, target):
+		shutil.move(os.path.join(self._target, self._filename), os.path.join(target, self._filename))
+		self._target = target
 
 	def download(self, success = None, error = None):
 		self._good = False
@@ -153,19 +168,23 @@ class DownloaderFile:
 			while str and str[0] in string.digits:
 				int_part += str[0]
 				str = str[1:]
-		print(int_part)
 		size = float(int_part)
 		unite = {
 			'kio' : 2**10, 'mio' : 2**20, 'gio' : 2**30, 'tio' : 2**40, 'pio' : 2**50, 'eio' : 2**60, 'zio' : 2**70,
 			'ko' : 10**3, 'mo' : 10**6, 'go' : 10**9, 'to' : 10**12, 'po' : 10**15, 'eo' : 10**18, 'zo' : 10**21,
 		}
 		if str:
-			print(str)
 			if str.lower() in unite:
 				size *= unite[str.lower()]
 			else:
 				size *= unite[str.lower()+'o']
 		return int(size)
+
+	def fd(self):
+		return self._fd
+
+	def realpath(self):
+		return os.path.realpath(self._fd.name)
 
 class DownloaderSource:
 	files = []
@@ -173,7 +192,8 @@ class DownloaderSource:
 	def __init__(self, manager, name, config):
 		self._manager = manager
 		self._name = name
-		self._file = DownloaderFile(self._manager, config['source'], temp = True)
+		self._target = config['target']
+		self._file = DownloaderFile(self._manager, config['source'], '/tmp', temp = True)
 		self._refresh = config.get('refresh', 0.0)
 		self._pattern = config['pattern']
 		self._re_pattern = re.compile(self._pattern, re.UNICODE)
@@ -181,6 +201,10 @@ class DownloaderSource:
 		self._filename = config.get('filename', '')
 		self._filesize = config.get('filesize', '')
 		self._task = None
+		self._triggers = {}
+		for trigger in config.get('triggers', {}):
+			self._triggers[trigger.lower()] = config['triggers'][trigger]
+
 		self.refresh_loop()
 
 	def refresh_loop(self):
@@ -202,28 +226,20 @@ class DownloaderSource:
 		fd.close()
 		os.remove(self._file._fd.name)
 		
-		config = {}
+		config = {'triggers':self._triggers}
 		files = []
 		for match in self._re_pattern.findall(self.data):
 			match = [m.decode('utf-8') for m in match]
-			print('match:',match)
-			print('replace:',self.replace(self._url, match))
-			url = self.replace(self._url, match).encode('ascii')
-			print(url)
-			config['name'] = self.replace(self._filename, match)
+			url = self._url.format(*match)
+			config['name'] = self._filename.format(*match)
 			if self._filesize:
-				config['size'] = self.replace(self._filesize, match)
-			print(config)
-			files.append(DownloaderFile(self._manager, url, **config))
+				config['size'] = self._filesize.format(*match)
+			#print(config)
+			files.append(DownloaderFile(self._manager, url, self._target, **config))
 		self.files = files
 
 	def error(self, d):
 		print('error: ' + str(d))
-
-	def replace(self, param, match):
-		for i in range(0, len(match)):
-			param = param.replace('$%d$' % (i,), match[i])
-		return param
 
 	def last_update(self):
 		return datetime.datetime.fromtimestamp(self._file._end_time)
@@ -249,6 +265,9 @@ class DownloaderSource:
 	def state(self):
 		return self._file.state()
 
+	def id(self):
+		return id(self)
+
 class ActiveSource(DownloaderSource):
 	def __init__(self):
 		self._name = 'Active Downloads'
@@ -258,6 +277,7 @@ class ActiveSource(DownloaderSource):
 
 class Downloader(Resource):
 	modules = {}
+	triggers = {"available":{}, "enabled":{}}
 	schemes = {}
 	sources = {}
 	active = ActiveSource()
@@ -269,10 +289,29 @@ class Downloader(Resource):
 			raise KeyError('Module %s is already registered' % (module,))
 		cls.modules[name] = module
 
+	@staticmethod
+	def listModules(dirname):
+		modules = []
+		for name in os.listdir(dirname):
+			if name.endswith('.py') and name != '__init__.py':
+				modules.append(importlib.import_module('%s.%s' % (dirname, name[:-3])))
+		return modules
+
+	@classmethod
+	def loadModules(cls):
+		for module in cls.listModules('modules'):
+			cls.register(module.module['name'], module.module['class'])
+
+	@classmethod
+	def loadTriggers(cls):
+		for module in cls.listModules('triggers'):
+			cls.triggers['available'][module.module['name']] = module.module['class']
+
 	def __init__(self, config = {}):
 		print('Downloader.__init__')
 		Resource.__init__(self)
 		self.jinja = jinja2.Environment(loader=jinja2.FileSystemLoader('.'))
+
 		self.enabled = {}
 		if 'modules' in config:
 			for module in config['modules']:
@@ -282,8 +321,18 @@ class Downloader(Resource):
 		#self.putChild('module', self)
 		self.putChild("static", File("static"))
 
+		if 'triggers' in config:
+			for trigger_type in config['triggers']:
+				for trigger_name in config['triggers'][trigger_type]:
+					trigger = config['triggers'][trigger_type][trigger_name]
+					self.triggers['enabled'][trigger_name] = self.triggers['available'][trigger_type](trigger)
+				#self.triggers['enabled'][name] = self.triggers['available'][trigger['type']](trigger)
+		print(self.triggers)
+
 		if 'sources' in config:
 			for source in config['sources']:
+				if 'target' in config and 'target' not in config['sources'][source]:
+					config['sources'][source]['target'] = config['target']
 				self.sources[source] = DownloaderSource(self, source, config['sources'][source])
 		print(self.sources)
 
@@ -333,21 +382,13 @@ class Downloader(Resource):
 		m = self.jinja.get_template('index.html')
 		return m.render(app=self, content=content).encode('utf-8')
 
-from modules.irc import XdccDownloader
-from modules.http import HttpDownloader
-from modules.local import LocalDownloader
-from modules.fake import FakeDownloader
-
-Downloader.register(XdccDownloader.name, XdccDownloader)
-Downloader.register(HttpDownloader.name, HttpDownloader)
-Downloader.register(LocalDownloader.name, LocalDownloader)
-Downloader.register(FakeDownloader.name, FakeDownloader)
-
 if __name__ == '__main__':
 	# initialize logging
 	log.startLogging(sys.stdout)
 	
 	# create factory protocol and application
+	Downloader.loadModules()
+	Downloader.loadTriggers()
 	config = json.load(open('config.json'))
 	web_factory = Site(Downloader(config))
 

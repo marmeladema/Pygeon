@@ -8,7 +8,6 @@ import urllib
 class HTTPDownloader(client.HTTPDownloader):
 	def gotHeaders(self, headers):
 		client.HTTPDownloader.gotHeaders(self, headers)
-		print(headers)
 		contentLength = headers.get("content-length", None)
 		if int(self.status) == 200 and contentLength:
 			print("%s: Content-Length: %s" % (self.url, contentLength,))
@@ -20,7 +19,6 @@ class HTTPDownloader(client.HTTPDownloader):
 		return self._file.open(self.fileName)
 
 class HttpDownloader(object):
-	name = "HttpDownloader"
 	ports = {'http' : 80, 'https' : 443}
 
 	def __init__(self, manager, config):
@@ -50,3 +48,8 @@ class HttpDownloader(object):
 		else:
 			reactor.connectTCP(host, port, factory)
 		return factory.deferred
+
+module = {
+    "name" : "HttpDownloader",
+    "class" : HttpDownloader
+}

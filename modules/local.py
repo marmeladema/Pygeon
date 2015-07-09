@@ -4,8 +4,6 @@ from twisted.internet import reactor
 import urlparse
 
 class LocalDownloader(object):
-	name = "LocalDownloader"
-
 	def __init__(self, manager, config):
 		self.manager = manager
 
@@ -23,3 +21,8 @@ class LocalDownloader(object):
 			host, port = parsed_url.netloc, 80
 		reactor.connectTCP(host, port, factory)
 		return factory.deferred
+
+module = {
+    "name" : "LocalDownloader",
+    "class" : LocalDownloader
+}

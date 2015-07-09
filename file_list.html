@@ -8,7 +8,7 @@
 		<div class="col-md-1 col-xs-1"><strong>Action</strong></div>
 	</div>
 	{% for i in range(0, source.files|count) %}
-	<div id="file_list_item" class="row" style="height:100%;border-top: 1px solid #ccc;vertical-align:middle">
+	<div id="source_{{source.id()}}_{{i}}" class="row" style="height:100%;border-top: 1px solid #ccc;vertical-align:middle">
 		<div class="col-md-1 col-xs-1">#{{i+1}}</div>
 		<div class="col-md-5 col-xs-10" style="white-space:normal;overflow-wrap:break-word;">
 			<span title="{{source.files[i]._url}}">{{source.files[i]._name}}</span>
@@ -27,6 +27,9 @@
 				<span class="glyphicon glyphicon-download" aria-hidden="true"></span>
 			</a>
 		</div>
+		{% if source.files[i].fd() %}
+		<div class="col-md-11 col-xs-11" style="white-space:normal;overflow-wrap:break-word;">{{source.files[i].realpath()}}</div>
+		{% endif %}
 	</div>
 	{% endfor %}
 </div>

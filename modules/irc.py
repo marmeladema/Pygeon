@@ -186,7 +186,6 @@ class IrcBotFactory(protocol.ClientFactory):
         #reactor.stop()
 
 class XdccDownloader(object):
-    name = 'XdccDownloader'
     nickname = 'michelmichel'
 
     isLeaf = True
@@ -243,3 +242,8 @@ class XdccDownloader(object):
         else:
             f._deferred.errback(ValueError("no irc connection found"))
         return f._deferred
+
+module = {
+    "name" : "XdccDownloader",
+    "class" : XdccDownloader
+}

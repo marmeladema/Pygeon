@@ -4,8 +4,6 @@ from twisted.internet import defer
 import urlparse
 
 class FakeDownloader(object):
-	name = "FakeDownloader"
-
 	def __init__(self, manager, config):
 		self.manager = manager
 
@@ -19,3 +17,9 @@ class FakeDownloader(object):
 		f._deferred = defer.Deferred()
 		f._deferred.callback(None)
 		return f._deferred
+
+
+module = {
+	"name" : "FakeDownloader",
+	"class" : FakeDownloader
+}
